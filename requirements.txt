@@ -1,0 +1,9 @@
+python-docx
+transformers
+langchain
+torch
+pdfplumber
+protobuf
+tiktoken
+blobfile
+sentencepiece
