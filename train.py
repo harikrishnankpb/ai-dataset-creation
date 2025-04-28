@@ -32,30 +32,36 @@ def split_text(text, chunk_size=800, chunk_overlap=100):
     return splitter.split_text(text)
 
 # Step 3: Generate QA pairs
-def generate_qa_pairs(text_chunks, model_name="valhalla/t5-small-qa-qg-hl"):
-    qa_pipeline = pipeline(
-        "text2text-generation",
-        model=model_name,
-        max_length=512
-    )
-    print("QA pipeline",qa_pipeline)
+def generate_qa_pairs(text_chunks, qg_model="valhalla/t5-small-qa-qg-hl", qa_model="deepset/minilm-uncased-squad2"):
     qa_pairs = []
+    
+    # Question generation pipeline
+    qg_pipeline = pipeline("text2text-generation", model=qg_model, max_length=512)
+
+    # QA answering pipeline
+    qa_pipeline = pipeline("question-answering", model=qa_model)
+
     for chunk in text_chunks:
+        # Generate questions
         prompt = f"generate questions: {chunk}"
-        response = qa_pipeline(prompt)[0]['generated_text']
-        # print(response)
-        # Response may return multiple QAs separated by newlines
-        questions_answers = response.split("\n")
-        for qa in questions_answers:
-            if "?" in qa:
-                parts = qa.split("?")
-                if len(parts) >= 2:
-                    question = parts[0].strip() + "?"
-                    answer = parts[1].strip()
-                    print("Question:",question)
-                    print("Answer:",answer)
-                    if question and answer:
-                        qa_pairs.append({"prompt": question, "completion": answer})
+        response = qg_pipeline(prompt)[0]['generated_text']
+        questions = response.split("\n")
+
+        for q in questions:
+            q = q.strip()
+            if "?" in q:
+                # Generate answer for each question
+                try:
+                    result = qa_pipeline(question=q, context=chunk)
+                    answer = result.get('answer', '').strip()
+                    if answer:
+                        qa_pairs.append({
+                            "prompt": q,
+                            "completion": answer
+                        })
+                except Exception as e:
+                    print(f"Error answering question '{q}': {e}")
+                    continue
     return qa_pairs
 
 # Step 4: Save QA pairs to .jsonl
