@@ -5,6 +5,14 @@ import pdfplumber
 from transformers import pipeline
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
+# I need to adjust this accodingly
+chunk_size = 800
+chunk_overlap=100
+
+# This is the model for question generation and answer from a text chunk
+qg_model="valhalla/t5-small-qa-qg-hl"
+qa_model="deepset/minilm-uncased-squad2"
+
 # Step 1: Extract text from DOCX or PDF
 def extract_text(file_path):
     ext = os.path.splitext(file_path)[1].lower()
@@ -27,12 +35,12 @@ def extract_text_pdf(file_path):
     return text
 
 # Step 2: Split text into manageable chunks
-def split_text(text, chunk_size=800, chunk_overlap=100):
+def split_text(text, chunk_size=chunk_size, chunk_overlap=chunk_overlap):
     splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     return splitter.split_text(text)
 
 # Step 3: Generate QA pairs
-def generate_qa_pairs(text_chunks, qg_model="valhalla/t5-small-qa-qg-hl", qa_model="deepset/minilm-uncased-squad2"):
+def generate_qa_pairs(text_chunks, qg_model=qg_model, qa_model=qa_model):
     qa_pairs = []
     
     # Question generation pipeline
@@ -71,9 +79,9 @@ def save_jsonl(qa_pairs, output_file):
             json.dump(item, f)
             f.write('\n')
 
-# Runner
+# Main function
 def main():
-    input_file = "company.pdf"  # Replace with your input (pdf or docx)
+    input_file = "company.pdf"  # File can be pdf or doc
     output_jsonl = 'training_data.jsonl'
 
     print("Extracting text...")
