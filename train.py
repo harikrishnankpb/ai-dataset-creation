@@ -44,32 +44,49 @@ def generate_qa_pairs(text_chunks, qg_model=qg_model, qa_model=qa_model):
     qa_pairs = []
     
     # Question generation pipeline
-    qg_pipeline = pipeline("text2text-generation", model=qg_model, max_length=512)
+    qg_pipeline = pipeline("text2text-generation", 
+                          model=qg_model, 
+                          max_length=512,
+                          num_return_sequences=3,  # Generate multiple questions per chunk
+                          do_sample=True,
+                          temperature=0.7)  # Add some randomness for variety
 
     # QA answering pipeline
     qa_pipeline = pipeline("question-answering", model=qa_model)
 
     for chunk in text_chunks:
-        # Generate questions
-        prompt = f"generate questions: {chunk}"
-        response = qg_pipeline(prompt)[0]['generated_text']
-        questions = response.split("\n")
+        # Generate multiple sets of questions with different prompts
+        prompts = [
+            f"generate questions: {chunk}",
+            f"ask questions about this text: {chunk}",
+            f"create detailed questions from this context: {chunk}"
+        ]
+        
+        all_questions = set()  # Use set to avoid duplicates
+        for prompt in prompts:
+            responses = qg_pipeline(prompt)
+            for response in responses:
+                questions = response['generated_text'].split("\n")
+                all_questions.update([q.strip() for q in questions if "?" in q and len(q.strip()) > 10])
 
-        for q in questions:
-            q = q.strip()
-            if "?" in q:
-                # Generate answer for each question
-                try:
-                    result = qa_pipeline(question=q, context=chunk)
-                    answer = result.get('answer', '').strip()
-                    if answer:
-                        qa_pairs.append({
-                            "prompt": q,
-                            "completion": answer
-                        })
-                except Exception as e:
-                    print(f"Error answering question '{q}': {e}")
-                    continue
+        for q in all_questions:
+            # Generate answer for each question
+            try:
+                result = qa_pipeline(question=q, context=chunk)
+                answer = result.get('answer', '').strip()
+                confidence = result.get('score', 0)
+                
+                # Only keep answers with decent confidence and length
+                if answer and confidence > 0.2 and len(answer) > 5:
+                    qa_pairs.append({
+                        "prompt": q,
+                        "completion": answer,
+                        "confidence": confidence
+                    })
+            except Exception as e:
+                print(f"Error answering question '{q}': {e}")
+                continue
+    
     return qa_pairs
 
 # Step 4: Save QA pairs to .jsonl
