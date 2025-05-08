@@ -10,7 +10,6 @@ import torch
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from tqdm import tqdm
 import concurrent.futures
-import multiprocessing
 import re
 # Setup logging
 logging.basicConfig(
@@ -175,7 +174,13 @@ def process_chunk(args):
         f"Create analytical questions that test deep understanding of this content: {chunk}",
         f"Generate questions about relationships and connections in this text: {chunk}",
         f"Form questions about the main concepts and definitions from this text: {chunk}",
-        f"What questions would verify someone's comprehension of these details: {chunk}"
+        f"What questions would verify someone's comprehension of these details: {chunk}",
+        f"You are a corporate analyst. Write 5 factual questions based on this content:{chunk}",
+        f"As a product trainer, what are some questions you'd ask to test understanding of this material?{chunk}",
+        f"Summarize this text by forming 5 'what', 'why', and 'how' questions:{chunk}",
+        f"Create 5 interview-style questions from this:{chunk}",
+        f"Generate 5 questions someone might ask when learning this for the first time:{chunk}",
+        f"What questions can help uncover the purpose, features, and limitations of the subject in this text?{chunk}",
     ]
     
     all_questions = set()
@@ -200,7 +205,8 @@ def process_chunk(args):
                     "prompt": q,
                     "completion": answer,
                     "confidence": confidence,
-                    "chunk_index": chunk_idx
+                    "chunk_index": chunk_idx,
+                    "context": chunk
                 })
         except Exception as e:
             logger.error(f"Error answering question '{q}' in chunk {chunk_idx}: {str(e)}")
